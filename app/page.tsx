@@ -1,144 +1,92 @@
 'use client'
 
 import { useState } from 'react'
-import AppLayout from './components/layout/AppLayout'
-import ViewToggle from './components/common/ViewToggle'
-import Calendar from './components/common/Calendar'
-import MonthlySummary from './components/common/MonthlySummary'
-import DailyMealList from './components/common/DailyMealList'
-import PortfolioView from './components/common/PortfolioView'
+import Link from 'next/link'
 
 export default function Home() {
-  const [currentView, setCurrentView] = useState<'calendar' | 'portfolio'>('calendar')
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const [portfolioFilter, setPortfolioFilter] = useState('')
-  const [portfolioLoading, setPortfolioLoading] = useState(false)
-
-  // Mock data for demonstration
-  const mockMeals = {
-    '2025-06-06': {
-      count: 3,
-      thumbnail: '/api/placeholder/40/40'
-    },
-    '2025-06-05': {
-      count: 2,
-      thumbnail: '/api/placeholder/40/40'
-    }
-  }
-
-  const mockDailyMeals = [
-    {
-      id: '1',
-      mealName: 'チキンサラダ',
-      mealTypeName: '昼食',
-      imageUrl: '/api/placeholder/150/150',
-      calories: 350,
-      protein: 25,
-      fat: 15,
-      carbs: 20,
-      recordedAt: new Date().toISOString()
-    },
-    {
-      id: '2',
-      mealName: 'プロテインスムージー',
-      mealTypeName: '間食',
-      calories: 200,
-      protein: 30,
-      fat: 5,
-      carbs: 10,
-      recordedAt: new Date().toISOString()
-    }
-  ]
-
-  const mockSummary = {
-    totalMeals: 45,
-    averageCalories: 1850,
-    averageProtein: 85.5,
-    averageFat: 65.2,
-    averageCarbs: 180.3
-  }
-
-  // Mock portfolio data
-  const mockPortfolioMeals = Array.from({ length: 20 }, (_, i) => ({
-    id: `portfolio-${i + 1}`,
-    mealName: i % 3 === 0 ? 'チキンサラダ' : i % 3 === 1 ? 'プロテインスムージー' : 'サーモン弁当',
-    mealTypeName: i % 4 === 0 ? '朝食' : i % 4 === 1 ? '昼食' : i % 4 === 2 ? '夕食' : '間食',
-    imageUrl: `/api/placeholder/300/300?${i}`,
-    calories: 200 + (i * 50),
-    protein: 15 + (i * 2),
-    fat: 8 + i,
-    carbs: 20 + (i * 3),
-    recordedAt: new Date(Date.now() - (i * 24 * 60 * 60 * 1000)).toISOString()
-  }))
-
-  const mockMealTypes = [
-    { id: '1', name: '朝食' },
-    { id: '2', name: '昼食' },
-    { id: '3', name: '夕食' },
-    { id: '4', name: '間食' }
-  ]
-
-  const handlePortfolioLoadMore = () => {
-    setPortfolioLoading(true)
-    // Simulate loading more data
-    setTimeout(() => {
-      setPortfolioLoading(false)
-    }, 1000)
-  }
-
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        {/* Header with view toggle */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4 sm:mb-0">
-            食事記録
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto py-12 px-4">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Meal Diary
           </h1>
-          <ViewToggle
-            currentView={currentView}
-            onViewChange={setCurrentView}
-          />
-        </div>
-
-        {currentView === 'calendar' ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Calendar */}
-            <div className="lg:col-span-2">
-              <Calendar
-                selectedDate={selectedDate}
-                onDateSelect={setSelectedDate}
-                meals={mockMeals}
-              />
-            </div>
-            
-            {/* Daily meal list */}
-            <div>
-              <DailyMealList
-                date={selectedDate}
-                meals={mockDailyMeals}
-              />
+          <p className="text-xl text-gray-600 mb-8">
+            AI画像認識付き食事記録アプリ
+          </p>
+          
+          {/* Tailwind Test */}
+          <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+            <h2 className="text-2xl font-semibold text-primary-600 mb-4">
+              スタイルテスト
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                <h3 className="text-primary-800 font-medium">カラー1</h3>
+                <p className="text-primary-600">Primary 50</p>
+              </div>
+              <div className="bg-primary-500 text-white rounded-lg p-4">
+                <h3 className="font-medium">カラー2</h3>
+                <p>Primary 500</p>
+              </div>
+              <div className="bg-primary-900 text-white rounded-lg p-4">
+                <h3 className="font-medium">カラー3</h3>
+                <p>Primary 900</p>
+              </div>
             </div>
           </div>
-        ) : (
-          <PortfolioView
-            meals={mockPortfolioMeals}
-            hasMore={true}
-            onLoadMore={handlePortfolioLoadMore}
-            loading={portfolioLoading}
-            filterMealType={portfolioFilter}
-            onFilterChange={setPortfolioFilter}
-            mealTypes={mockMealTypes}
-          />
-        )}
+        </div>
 
-        {/* Monthly summary */}
-        {currentView === 'calendar' && (
-          <MonthlySummary
-            month={selectedDate}
-            summary={mockSummary}
-          />
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Link 
+            href="/auth/login"
+            className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 border border-gray-200"
+          >
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              ログイン
+            </h3>
+            <p className="text-gray-600">
+              アカウントにサインインして食事記録を始めましょう
+            </p>
+          </Link>
+
+          <Link 
+            href="/auth/register"
+            className="block bg-primary-600 text-white rounded-lg shadow hover:shadow-md transition-shadow p-6"
+          >
+            <h3 className="text-xl font-semibold mb-2">
+              新規登録
+            </h3>
+            <p>
+              新しくアカウントを作成して始める
+            </p>
+          </Link>
+
+          <Link 
+            href="/meals/new"
+            className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 border border-gray-200"
+          >
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              食事を記録
+            </h3>
+            <p className="text-gray-600">
+              新しい食事を写真付きで記録する
+            </p>
+          </Link>
+
+          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              機能一覧
+            </h3>
+            <ul className="text-gray-600 space-y-1">
+              <li>📸 写真アップロード</li>
+              <li>🤖 AI画像認識</li>
+              <li>📊 栄養情報記録</li>
+              <li>📅 カレンダー表示</li>
+            </ul>
+          </div>
+        </div>
       </div>
-    </AppLayout>
+    </div>
   )
 }
