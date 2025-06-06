@@ -1,13 +1,36 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { MantineProvider, createTheme } from '@mantine/core';
+import { ModalsProvider } from '@mantine/modals';
+import { Notifications } from '@mantine/notifications';
 import { AuthProvider } from "@/components/providers/auth-provider";
-import ErrorBoundary from "@/components/common/ErrorBoundary";
-import { ToastProvider } from "@/components/common/Toast";
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+});
+
+const theme = createTheme({
+  primaryColor: 'green',
+  colors: {
+    green: [
+      '#f0fdf4',
+      '#dcfce7',
+      '#bbf7d0',
+      '#86efac',
+      '#4ade80',
+      '#22c55e',
+      '#16a34a',
+      '#15803d',
+      '#166534',
+      '#14532d',
+    ],
+  },
+  fontFamily: inter.style.fontFamily,
+  headings: {
+    fontFamily: inter.style.fontFamily,
+  },
 });
 
 export const metadata: Metadata = {
@@ -65,14 +88,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className={`${inter.variable} font-sans antialiased`}>
-        <ErrorBoundary>
-          <AuthProvider>
-            <ToastProvider>
+      <body className={inter.variable}>
+        <MantineProvider theme={theme}>
+          <ModalsProvider>
+            <Notifications />
+            <AuthProvider>
               {children}
-            </ToastProvider>
-          </AuthProvider>
-        </ErrorBoundary>
+            </AuthProvider>
+          </ModalsProvider>
+        </MantineProvider>
       </body>
     </html>
   );

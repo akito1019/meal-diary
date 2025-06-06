@@ -1,92 +1,179 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
+import { 
+  Container, 
+  Title, 
+  Text, 
+  Card, 
+  SimpleGrid, 
+  Button,
+  Group,
+  Stack,
+  List,
+  ThemeIcon,
+  Box,
+  Center
+} from '@mantine/core'
+import { 
+  IconLogin, 
+  IconUserPlus, 
+  IconCamera, 
+  IconBrain,
+  IconChartBar,
+  IconCalendar
+} from '@tabler/icons-react'
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto py-12 px-4">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Meal Diary
-          </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            AI画像認識付き食事記録アプリ
-          </p>
-          
-          {/* Tailwind Test */}
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-            <h2 className="text-2xl font-semibold text-primary-600 mb-4">
-              スタイルテスト
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-                <h3 className="text-primary-800 font-medium">カラー1</h3>
-                <p className="text-primary-600">Primary 50</p>
-              </div>
-              <div className="bg-primary-500 text-white rounded-lg p-4">
-                <h3 className="font-medium">カラー2</h3>
-                <p>Primary 500</p>
-              </div>
-              <div className="bg-primary-900 text-white rounded-lg p-4">
-                <h3 className="font-medium">カラー3</h3>
-                <p>Primary 900</p>
-              </div>
-            </div>
-          </div>
-        </div>
+    <Box style={{ minHeight: '100vh', backgroundColor: 'var(--mantine-color-gray-0)' }}>
+      <Container size="lg" py="xl">
+        <Center>
+          <Stack align="center" gap="xl">
+            {/* Header */}
+            <Stack align="center" gap="md">
+              <Title order={1} size={48} fw={700} c="dark">
+                Meal Diary
+              </Title>
+              <Text size="xl" c="dimmed" ta="center">
+                AI画像認識付き食事記録アプリ
+              </Text>
+            </Stack>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Link 
-            href="/auth/login"
-            className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 border border-gray-200"
-          >
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              ログイン
-            </h3>
-            <p className="text-gray-600">
-              アカウントにサインインして食事記録を始めましょう
-            </p>
-          </Link>
+            {/* Mantine Test Card */}
+            <Card shadow="lg" padding="xl" radius="md" withBorder w="100%" maw={600}>
+              <Title order={2} size="h3" c="green.6" ta="center" mb="md">
+                スタイルテスト - Mantine UI
+              </Title>
+              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                <Card bg="green.0" radius="md" p="md">
+                  <Text fw={500} c="green.8">カラー1</Text>
+                  <Text size="sm" c="green.6">Green 0</Text>
+                </Card>
+                <Card bg="green.6" radius="md" p="md">
+                  <Text fw={500} c="white">カラー2</Text>
+                  <Text size="sm" c="white">Green 6</Text>
+                </Card>
+                <Card bg="green.9" radius="md" p="md">
+                  <Text fw={500} c="white">カラー3</Text>
+                  <Text size="sm" c="white">Green 9</Text>
+                </Card>
+              </SimpleGrid>
+            </Card>
 
-          <Link 
-            href="/auth/register"
-            className="block bg-primary-600 text-white rounded-lg shadow hover:shadow-md transition-shadow p-6"
-          >
-            <h3 className="text-xl font-semibold mb-2">
-              新規登録
-            </h3>
-            <p>
-              新しくアカウントを作成して始める
-            </p>
-          </Link>
+            {/* Navigation Cards */}
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" w="100%" maw={800}>
+              <Card 
+                component={Link} 
+                href="/auth/login" 
+                shadow="sm" 
+                padding="lg" 
+                radius="md" 
+                withBorder
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+                <Group gap="md">
+                  <ThemeIcon size="lg" color="blue" variant="light">
+                    <IconLogin size={24} />
+                  </ThemeIcon>
+                  <Stack gap={4}>
+                    <Title order={3} size="h4">ログイン</Title>
+                    <Text size="sm" c="dimmed">
+                      アカウントにサインインして食事記録を始めましょう
+                    </Text>
+                  </Stack>
+                </Group>
+              </Card>
 
-          <Link 
-            href="/meals/new"
-            className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 border border-gray-200"
-          >
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              食事を記録
-            </h3>
-            <p className="text-gray-600">
-              新しい食事を写真付きで記録する
-            </p>
-          </Link>
+              <Card 
+                component={Link} 
+                href="/auth/register" 
+                shadow="sm" 
+                padding="lg" 
+                radius="md" 
+                bg="green.6"
+                style={{ textDecoration: 'none', color: 'white' }}
+              >
+                <Group gap="md">
+                  <ThemeIcon size="lg" color="white" variant="filled">
+                    <IconUserPlus size={24} />
+                  </ThemeIcon>
+                  <Stack gap={4}>
+                    <Title order={3} size="h4" c="white">新規登録</Title>
+                    <Text size="sm" c="white">
+                      新しくアカウントを作成して始める
+                    </Text>
+                  </Stack>
+                </Group>
+              </Card>
 
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              機能一覧
-            </h3>
-            <ul className="text-gray-600 space-y-1">
-              <li>📸 写真アップロード</li>
-              <li>🤖 AI画像認識</li>
-              <li>📊 栄養情報記録</li>
-              <li>📅 カレンダー表示</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
+              <Card 
+                component={Link} 
+                href="/meals/new" 
+                shadow="sm" 
+                padding="lg" 
+                radius="md" 
+                withBorder
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+                <Group gap="md">
+                  <ThemeIcon size="lg" color="orange" variant="light">
+                    <IconCamera size={24} />
+                  </ThemeIcon>
+                  <Stack gap={4}>
+                    <Title order={3} size="h4">食事を記録</Title>
+                    <Text size="sm" c="dimmed">
+                      新しい食事を写真付きで記録する
+                    </Text>
+                  </Stack>
+                </Group>
+              </Card>
+
+              <Card shadow="sm" padding="lg" radius="md" withBorder>
+                <Title order={3} size="h4" mb="md">機能一覧</Title>
+                <List size="sm" spacing={4}>
+                  <List.Item 
+                    icon={
+                      <ThemeIcon size="sm" color="blue" variant="light">
+                        <IconCamera size={16} />
+                      </ThemeIcon>
+                    }
+                  >
+                    写真アップロード
+                  </List.Item>
+                  <List.Item 
+                    icon={
+                      <ThemeIcon size="sm" color="purple" variant="light">
+                        <IconBrain size={16} />
+                      </ThemeIcon>
+                    }
+                  >
+                    AI画像認識
+                  </List.Item>
+                  <List.Item 
+                    icon={
+                      <ThemeIcon size="sm" color="green" variant="light">
+                        <IconChartBar size={16} />
+                      </ThemeIcon>
+                    }
+                  >
+                    栄養情報記録
+                  </List.Item>
+                  <List.Item 
+                    icon={
+                      <ThemeIcon size="sm" color="red" variant="light">
+                        <IconCalendar size={16} />
+                      </ThemeIcon>
+                    }
+                  >
+                    カレンダー表示
+                  </List.Item>
+                </List>
+              </Card>
+            </SimpleGrid>
+          </Stack>
+        </Center>
+      </Container>
+    </Box>
   )
 }
