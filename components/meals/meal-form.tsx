@@ -1,9 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Database } from '@/types/database';
 import { MealTypeSelector } from '@/components/meal-types/meal-type-selector';
 import { useMealTypes } from '@/hooks/use-meal-types';
+import { useMeals } from '@/hooks/use-meals';
+import { CreateMealData } from '@/hooks/use-meals';
+import { AIImageAnalyzer } from '@/components/ai/AIImageAnalyzer';
+import { useToast } from '@/components/common/Toast';
 
 type MealType = Database['public']['Tables']['meal_types']['Row'];
 
@@ -16,14 +20,15 @@ interface MealFormData {
   carbs: number | null;
   memo: string;
   recordedAt: string;
+  imageUrl?: string;
 }
 
 interface MealFormProps {
   initialData?: Partial<MealFormData>;
-  onSubmit: (data: MealFormData) => Promise<void>;
+  onSubmit: (data: CreateMealData) => Promise<void>;
   onCancel?: () => void;
   submitLabel?: string;
-  isSubmitting?: boolean;
+  loading?: boolean;
 }
 
 export function MealForm({
@@ -31,9 +36,12 @@ export function MealForm({
   onSubmit,
   onCancel,
   submitLabel = '保存',
-  isSubmitting = false,
+  loading = false,
 }: MealFormProps) {
   const { mealTypes } = useMealTypes();
+  const { uploadImage } = useMeals();
+  const { showToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<MealFormData>({
     mealTypeId: initialData?.mealTypeId || '',
@@ -44,9 +52,13 @@ export function MealForm({
     carbs: initialData?.carbs || null,
     memo: initialData?.memo || '',
     recordedAt: initialData?.recordedAt || new Date().toISOString().slice(0, 16),
+    imageUrl: initialData?.imageUrl || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>(initialData?.imageUrl || '');
 
   const handleInputChange = (field: keyof MealFormData, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -55,8 +67,62 @@ export function MealForm({
     }
   };
 
+  const handleFileSelect = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      showToast('画像ファイルを選択してください', 'error');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('ファイルサイズは5MB以下にしてください', 'error');
+      return;
+    }
+
+    setSelectedFile(file);
+    
+    // Create preview URL
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+
+    // Upload image
+    setUploading(true);
+    try {
+      const result = await uploadImage(file);
+      setFormData(prev => ({ ...prev, imageUrl: result.url }));
+      showToast('画像をアップロードしました', 'success');
+    } catch (error) {
+      showToast('画像のアップロードに失敗しました', 'error');
+      setPreviewUrl('');
+      setSelectedFile(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleAnalysisResult = (result: { name: string; calories?: number; protein?: number; fat?: number; carbs?: number }) => {
+    setFormData(prev => ({
+      ...prev,
+      mealName: result.name,
+      calories: result.calories || prev.calories,
+      protein: result.protein || prev.protein,
+      fat: result.fat || prev.fat,
+      carbs: result.carbs || prev.carbs,
+    }));
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
+
+    if (!formData.imageUrl) {
+      newErrors.imageUrl = '食事の写真をアップロードしてください';
+    }
 
     if (!formData.mealTypeId) {
       newErrors.mealTypeId = '食事タイプを選択してください';
@@ -94,7 +160,17 @@ export function MealForm({
     }
 
     try {
-      await onSubmit(formData);
+      await onSubmit({
+        meal_type_id: formData.mealTypeId,
+        image_url: formData.imageUrl!,
+        meal_name: formData.mealName,
+        calories: formData.calories,
+        protein: formData.protein,
+        fat: formData.fat,
+        carbs: formData.carbs,
+        memo: formData.memo,
+        recorded_at: formData.recordedAt,
+      });
     } catch (error) {
       console.error('Form submission error:', error);
     }
@@ -108,6 +184,72 @@ export function MealForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Image Upload Section */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          食事の写真 <span className="text-red-500">*</span>
+        </label>
+        
+        {previewUrl ? (
+          <div className="space-y-4">
+            <div className="relative">
+              <img
+                src={previewUrl}
+                alt="食事の写真"
+                className="w-full h-64 object-cover rounded-lg border border-gray-300"
+              />
+              {uploading && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+                  <div className="text-white">アップロード中...</div>
+                </div>
+              )}
+            </div>
+            
+            {formData.imageUrl && !uploading && (
+              <AIImageAnalyzer
+                imageUrl={formData.imageUrl}
+                onAnalysisResult={handleAnalysisResult}
+              />
+            )}
+            
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || loading}
+              className="text-sm text-primary-600 hover:text-primary-500 disabled:text-gray-400"
+            >
+              写真を変更
+            </button>
+          </div>
+        ) : (
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full h-64 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary-500 transition-colors"
+          >
+            <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <p className="text-gray-500 text-center">
+              クリックして写真をアップロード<br />
+              <span className="text-sm text-gray-400">JPEG, PNG, WebP (最大5MB)</span>
+            </p>
+          </div>
+        )}
+        
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileInputChange}
+          className="hidden"
+          disabled={uploading || loading}
+        />
+        
+        {errors.imageUrl && (
+          <p className="mt-2 text-sm text-red-600">{errors.imageUrl}</p>
+        )}
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           食事タイプ <span className="text-red-500">*</span>
@@ -130,11 +272,11 @@ export function MealForm({
           id="mealName"
           value={formData.mealName}
           onChange={(e) => handleInputChange('mealName', e.target.value)}
-          disabled={isSubmitting}
+          disabled={loading}
           className={`
             w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
             ${errors.mealName ? 'border-red-500' : 'border-gray-300'}
-            ${isSubmitting ? 'bg-gray-100' : 'bg-white'}
+            ${loading ? 'bg-gray-100' : 'bg-white'}
           `}
           placeholder="例：チキンサラダ、パスタ"
         />
@@ -152,10 +294,10 @@ export function MealForm({
           id="recordedAt"
           value={formData.recordedAt}
           onChange={(e) => handleInputChange('recordedAt', e.target.value)}
-          disabled={isSubmitting}
+          disabled={loading}
           className={`
             w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
-            ${isSubmitting ? 'bg-gray-100' : 'bg-white'}
+            ${loading ? 'bg-gray-100' : 'bg-white'}
           `}
         />
       </div>
@@ -170,11 +312,11 @@ export function MealForm({
             id="calories"
             value={formData.calories || ''}
             onChange={(e) => handleInputChange('calories', handleNumberInput(e.target.value))}
-            disabled={isSubmitting}
+            disabled={loading}
             className={`
               w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
               ${errors.calories ? 'border-red-500' : 'border-gray-300'}
-              ${isSubmitting ? 'bg-gray-100' : 'bg-white'}
+              ${loading ? 'bg-gray-100' : 'bg-white'}
             `}
             placeholder="0"
             min="0"
@@ -194,11 +336,11 @@ export function MealForm({
             id="protein"
             value={formData.protein || ''}
             onChange={(e) => handleInputChange('protein', handleNumberInput(e.target.value))}
-            disabled={isSubmitting}
+            disabled={loading}
             className={`
               w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
               ${errors.protein ? 'border-red-500' : 'border-gray-300'}
-              ${isSubmitting ? 'bg-gray-100' : 'bg-white'}
+              ${loading ? 'bg-gray-100' : 'bg-white'}
             `}
             placeholder="0"
             min="0"
@@ -218,11 +360,11 @@ export function MealForm({
             id="fat"
             value={formData.fat || ''}
             onChange={(e) => handleInputChange('fat', handleNumberInput(e.target.value))}
-            disabled={isSubmitting}
+            disabled={loading}
             className={`
               w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
               ${errors.fat ? 'border-red-500' : 'border-gray-300'}
-              ${isSubmitting ? 'bg-gray-100' : 'bg-white'}
+              ${loading ? 'bg-gray-100' : 'bg-white'}
             `}
             placeholder="0"
             min="0"
@@ -242,11 +384,11 @@ export function MealForm({
             id="carbs"
             value={formData.carbs || ''}
             onChange={(e) => handleInputChange('carbs', handleNumberInput(e.target.value))}
-            disabled={isSubmitting}
+            disabled={loading}
             className={`
               w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
               ${errors.carbs ? 'border-red-500' : 'border-gray-300'}
-              ${isSubmitting ? 'bg-gray-100' : 'bg-white'}
+              ${loading ? 'bg-gray-100' : 'bg-white'}
             `}
             placeholder="0"
             min="0"
@@ -266,11 +408,11 @@ export function MealForm({
           id="memo"
           value={formData.memo}
           onChange={(e) => handleInputChange('memo', e.target.value)}
-          disabled={isSubmitting}
+          disabled={loading}
           rows={4}
           className={`
             w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
-            ${isSubmitting ? 'bg-gray-100' : 'bg-white'}
+            ${loading ? 'bg-gray-100' : 'bg-white'}
           `}
           placeholder="食事に関するメモがあれば記入してください"
         />
@@ -281,7 +423,7 @@ export function MealForm({
           <button
             type="button"
             onClick={onCancel}
-            disabled={isSubmitting}
+            disabled={loading}
             className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
           >
             キャンセル
@@ -289,10 +431,10 @@ export function MealForm({
         )}
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={loading}
           className={`
             px-6 py-2 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
-            ${isSubmitting 
+            ${loading 
               ? 'bg-gray-400 cursor-not-allowed' 
               : 'bg-blue-600 hover:bg-blue-700'
             }
