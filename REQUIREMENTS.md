@@ -6,12 +6,13 @@
 
 ## 技術スタック
 - **フロントエンド**: Next.js 14 (App Router)
-- **スタイリング**: Tailwind CSS
+- **スタイリング**: Mantine UI v8
+- **アイコン**: @tabler/icons-react
 - **バックエンド**: Supabase
   - 認証（Auth）
   - データベース（PostgreSQL）
   - ファイルストレージ（Storage）
-- **AI画像認識**: OpenAI Vision API
+- **AI画像認識**: OpenAI Vision API (gpt-4o)
 - **開発言語**: TypeScript
 
 ## 機能要件
@@ -29,10 +30,12 @@
   - Supabase Storageに保存
   
 - **AI食事認識**
-  - OpenAI Vision APIを使用
+  - OpenAI Vision API (gpt-4o)を使用
   - 認識精度目標: 80%
   - 複数の候補を提示（ユーザーが選択可能）
   - 認識できなかった場合の手動入力対応
+  - 画像類似度による過去の食事提案機能
+  - 信頼度スコアと推論理由の表示
   
 - **栄養情報記録**
   - カロリー（kcal）
@@ -43,9 +46,10 @@
   
 - **食事タイプ機能**
   - 既存タイプから選択（ドロップダウン）
-  - 新規タイプの作成機能
-  - タイプ例：meal1, meal2, プロテイン, 間食, チートデイ等
+  - 新規タイプの作成機能（モーダル）
+  - デフォルトタイプ：朝食、昼食、夕食、間食、プロテイン
   - ユーザーごとにタイプを管理
+  - ドラッグ＆ドロップで並び替え可能
   
 - **記録の管理**
   - 編集機能
@@ -54,17 +58,20 @@
 
 ### 3. 記録閲覧機能
 - **表示形式の切り替え**
-  - カレンダービュー（月表示）
+  - カレンダービュー（月表示）※未実装
   - ポートフォリオビュー（写真グリッド表示）
   - 表示切り替えボタン
 - 日別の記録一覧
 - 月間サマリー表示
 - 写真のサムネイル表示
+- 今日の栄養摂取量サマリー（ダッシュボード）
 
 ### 4. レスポンシブ対応
 - モバイルファースト設計
 - スマートフォンでの使いやすさを重視
 - タブレット・PCでも適切に表示
+- ボトムナビゲーション（モバイルのみ）
+- Mantineのレスポンシブユーティリティ使用
 
 ## 非機能要件
 - **パフォーマンス**: 画像アップロード後3秒以内にAI認識結果を表示
@@ -81,6 +88,7 @@
 ### profiles
 - id (UUID, users.idを参照)
 - username (text)
+- email (text)
 - created_at (timestamp)
 - updated_at (timestamp)
 
@@ -125,41 +133,57 @@
 4. **食事詳細画面**（個別の記録表示・編集）
 5. **プロフィール画面**
 
+## 実装済みの追加機能
+- 画像類似度による過去食事の検索
+- 食事タイプの並び替え機能
+- トースト通知（Mantine Notifications）
+- スケルトンローダー
+- プログレッシブな画像アップロード
+
 ## 今後の拡張予定
-- 目標設定機能
+- 目標設定機能（現在はハードコード）
 - 進捗グラフ表示
 - データエクスポート機能（CSV）
 - 決済機能（プレミアムプラン）
-- PWA対応
+- PWA対応（manifest.tsは実装済み、service worker未実装）
+- カレンダービューの実装
 
 ## API設計
 
 ### エンドポイント一覧
-- `POST /api/auth/register` - ユーザー登録
-- `POST /api/auth/login` - ログイン
-- `POST /api/auth/logout` - ログアウト
+- `GET /api/auth/callback` - Supabase認証コールバック
+- `POST /api/auth/signout` - ログアウト
 - `GET /api/meals` - 食事記録一覧取得
 - `POST /api/meals` - 食事記録作成
-- `PUT /api/meals/:id` - 食事記録更新
-- `DELETE /api/meals/:id` - 食事記録削除
-- `POST /api/meals/analyze` - 画像AI分析
+- `GET /api/meals/[id]` - 食事記録取得
+- `PUT /api/meals/[id]` - 食事記録更新
+- `DELETE /api/meals/[id]` - 食事記録削除
+- `GET /api/meals/suggestions` - 画像類似度による提案取得
+- `POST /api/ai/analyze-meal` - 画像AI分析
 - `GET /api/meal-types` - 食事タイプ一覧取得
 - `POST /api/meal-types` - 食事タイプ作成
+- `PUT /api/meal-types/[id]` - 食事タイプ更新
+- `DELETE /api/meal-types/[id]` - 食事タイプ削除
+- `POST /api/meal-types/reorder` - 食事タイプ並び替え
+- `POST /api/upload` - 画像アップロード
+
+※認証処理は主にSupabase Auth直接使用
 
 ## 環境変数
 ```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-OPENAI_API_KEY=
+NEXT_PUBLIC_SUPABASE_URL=      # Supabase プロジェクトURL
+NEXT_PUBLIC_SUPABASE_ANON_KEY= # Supabase アノニマスキー
+OPENAI_API_KEY=                # OpenAI APIキー（Vision API用）
 ```
 
 ## UI/UXガイドライン
-- **カラーパレット**: 健康的なグリーン系をメインカラーに
-- **フォント**: 読みやすさ重視（Inter, Noto Sans JP）
+- **UIフレームワーク**: Mantine UI v8
+- **カラーパレット**: Mantineのデフォルトテーマ（カスタマイズ可能）
+- **アイコン**: @tabler/icons-react
 - **レイアウト**: カード型デザインでコンテンツを整理
-- **アニメーション**: 控えめなトランジション効果
-- **エラーハンドリング**: ユーザーフレンドリーなエラーメッセージ
+- **アニメーション**: Mantineのトランジション効果
+- **エラーハンドリング**: トースト通知システム（Mantine Notifications）
+- **モバイルUI**: ボトムナビゲーション実装
 
 ## テスト計画
 - **単体テスト**: Jest + React Testing Library
@@ -173,7 +197,12 @@ OPENAI_API_KEY=
 - **ドメイン**: 未定
 
 ## 開発フェーズ
-1. **Phase 1**: 基本機能実装（認証、記録、閲覧）
-2. **Phase 2**: AI認識機能実装
-3. **Phase 3**: UI/UX改善
-4. **Phase 4**: 拡張機能実装（必要に応じて）
+1. **Phase 1**: 基本機能実装（認証、記録、閲覧）✅ 完了
+2. **Phase 2**: AI認識機能実装 ✅ 完了
+3. **Phase 3**: UI/UX改善 ✅ 部分的に完了
+4. **Phase 4**: 拡張機能実装（進行中）
+   - カレンダービュー実装
+   - 目標設定機能
+   - 進捗グラフ表示
+   - データエクスポート
+   - PWA対応
