@@ -1,13 +1,36 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { 
+  Stack, 
+  TextInput, 
+  Textarea, 
+  NumberInput, 
+  Button, 
+  Text, 
+  Group, 
+  FileInput, 
+  Image, 
+  Card, 
+  Grid, 
+  Box,
+  Center,
+  Loader
+} from '@mantine/core';
+import { IconUpload, IconPhoto, IconFlame, IconActivity, IconTarget, IconAward, IconCalendar, IconNotes } from '@tabler/icons-react';
 import { Database } from '@/types/database';
 import { MealTypeSelector } from '@/components/meal-types/meal-type-selector';
+import { CreateMealTypeModal } from '@/components/meal-types/create-meal-type-modal';
 import { useMealTypes } from '@/hooks/use-meal-types';
 import { useMeals } from '@/hooks/use-meals';
 import { CreateMealData } from '@/hooks/use-meals';
-import { AIImageAnalyzer } from '@/components/ai/AIImageAnalyzer';
-import { useToast } from '@/components/common/Toast';
+import dynamic from 'next/dynamic';
+
+const AIImageAnalyzer = dynamic(() => import('@/components/ai/AIImageAnalyzer'), {
+  loading: () => <Text size="sm">AI解析を読み込み中...</Text>,
+  ssr: false
+});
+import { notifications } from '@mantine/notifications';
 
 type MealType = Database['public']['Tables']['meal_types']['Row'];
 
@@ -38,9 +61,8 @@ export function MealForm({
   submitLabel = '保存',
   loading = false,
 }: MealFormProps) {
-  const { mealTypes } = useMealTypes();
+  const { mealTypes, createMealType, refetch } = useMealTypes();
   const { uploadImage } = useMeals();
-  const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<MealFormData>({
@@ -59,6 +81,7 @@ export function MealForm({
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(initialData?.imageUrl || '');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const handleInputChange = (field: keyof MealFormData, value: string | number | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -69,12 +92,20 @@ export function MealForm({
 
   const handleFileSelect = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      showToast('画像ファイルを選択してください', 'error');
+      notifications.show({
+        title: 'エラー',
+        message: '画像ファイルを選択してください',
+        color: 'red',
+      });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      showToast('ファイルサイズは5MB以下にしてください', 'error');
+      notifications.show({
+        title: 'エラー',
+        message: 'ファイルサイズは5MB以下にしてください',
+        color: 'red',
+      });
       return;
     }
 
@@ -89,9 +120,17 @@ export function MealForm({
     try {
       const result = await uploadImage(file);
       setFormData(prev => ({ ...prev, imageUrl: result.url }));
-      showToast('画像をアップロードしました', 'success');
+      notifications.show({
+        title: '成功',
+        message: '画像をアップロードしました',
+        color: 'green',
+      });
     } catch (error) {
-      showToast('画像のアップロードに失敗しました', 'error');
+      notifications.show({
+        title: 'エラー',
+        message: '画像のアップロードに失敗しました',
+        color: 'red',
+      });
       setPreviewUrl('');
       setSelectedFile(null);
     } finally {
@@ -106,15 +145,21 @@ export function MealForm({
     }
   };
 
-  const handleAnalysisResult = (result: { name: string; calories?: number; protein?: number; fat?: number; carbs?: number }) => {
+  const handleAnalysisComplete = (data: { name: string; calories: number; protein: number; carbs: number; fat: number; memo?: string }) => {
     setFormData(prev => ({
       ...prev,
-      mealName: result.name,
-      calories: result.calories || prev.calories,
-      protein: result.protein || prev.protein,
-      fat: result.fat || prev.fat,
-      carbs: result.carbs || prev.carbs,
+      mealName: data.name,
+      calories: data.calories || prev.calories,
+      protein: data.protein || prev.protein,
+      fat: data.fat || prev.fat,
+      carbs: data.carbs || prev.carbs,
+      memo: data.memo || prev.memo,
     }));
+  };
+
+  const handleManualEdit = () => {
+    // AIアナライザーを非表示にして手動入力を促す
+    // 既にフォームが表示されているので、特に何もしない
   };
 
   const validateForm = (): boolean => {
@@ -164,10 +209,10 @@ export function MealForm({
         meal_type_id: formData.mealTypeId,
         image_url: formData.imageUrl!,
         meal_name: formData.mealName,
-        calories: formData.calories,
-        protein: formData.protein,
-        fat: formData.fat,
-        carbs: formData.carbs,
+        calories: formData.calories ?? undefined,
+        protein: formData.protein ?? undefined,
+        fat: formData.fat ?? undefined,
+        carbs: formData.carbs ?? undefined,
         memo: formData.memo,
         recorded_at: formData.recordedAt,
       });
@@ -176,294 +221,322 @@ export function MealForm({
     }
   };
 
-  const handleNumberInput = (value: string): number | null => {
-    if (value === '') return null;
-    const num = parseFloat(value);
-    return isNaN(num) ? null : num;
+
+  const handleCreateMealType = async (name: string) => {
+    try {
+      console.log('Creating meal type:', name);
+      const newType = await createMealType({ name });
+      console.log('Created meal type:', newType);
+      await refetch();
+      setFormData(prev => ({ ...prev, mealTypeId: newType.id }));
+      notifications.show({
+        title: '成功',
+        message: `食事タイプ「${name}」を作成しました`,
+        color: 'green',
+      });
+    } catch (error) {
+      console.error('Error creating meal type:', error);
+      const errorMessage = error instanceof Error ? error.message : '食事タイプの作成に失敗しました';
+      notifications.show({
+        title: 'エラー',
+        message: errorMessage,
+        color: 'red',
+      });
+      throw error;
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Image Upload Section */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          食事の写真 <span className="text-red-500">*</span>
-        </label>
-        
-        {previewUrl ? (
-          <div className="space-y-4">
-            <div className="relative">
-              <img
-                src={previewUrl}
-                alt="食事の写真"
-                className="w-full h-64 object-cover rounded-lg border border-gray-300"
-              />
-              {uploading && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
-                  <div className="text-white">アップロード中...</div>
-                </div>
+    <Stack gap="xl">
+      <form onSubmit={handleSubmit}>
+        <Stack gap="xl">
+        {/* Image Upload Section */}
+        <Card shadow="sm" padding="xl" radius="md" withBorder>
+          <Group justify="space-between" mb="lg">
+            <Group gap="sm">
+              <IconPhoto size={20} color="var(--mantine-color-green-6)" />
+              <Text fw={600} size="lg">
+                食事の写真 <Text component="span" c="red">*</Text>
+              </Text>
+            </Group>
+          </Group>
+          
+          {previewUrl ? (
+            <Stack gap="md">
+              <Card withBorder>
+                <Box pos="relative">
+                  <Image
+                    src={previewUrl}
+                    alt="食事の写真"
+                    h={264}
+                    fit="cover"
+                    radius="md"
+                  />
+                  {uploading && (
+                    <Box
+                      pos="absolute"
+                      top={0}
+                      left={0}
+                      right={0}
+                      bottom={0}
+                      bg="rgba(0, 0, 0, 0.5)"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 'var(--mantine-radius-md)'
+                      }}
+                    >
+                      <Group gap="xs">
+                        <Loader size="sm" color="white" />
+                        <Text c="white" size="sm">アップロード中...</Text>
+                      </Group>
+                    </Box>
+                  )}
+                </Box>
+              </Card>
+              
+              {formData.imageUrl && !uploading && (
+                <Card withBorder bg="blue.0" p="md">
+                  <AIImageAnalyzer
+                    imageUrl={formData.imageUrl}
+                    onAnalysisComplete={handleAnalysisComplete}
+                    onManualEdit={handleManualEdit}
+                  />
+                </Card>
               )}
-            </div>
-            
-            {formData.imageUrl && !uploading && (
-              <AIImageAnalyzer
-                imageUrl={formData.imageUrl}
-                onAnalysisResult={handleAnalysisResult}
-              />
-            )}
-            
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading || loading}
-              className="text-sm text-primary-600 hover:text-primary-500 disabled:text-gray-400"
-            >
-              写真を変更
-            </button>
-          </div>
-        ) : (
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full h-64 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary-500 transition-colors"
-          >
-            <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <p className="text-gray-500 text-center">
-              クリックして写真をアップロード<br />
-              <span className="text-sm text-gray-400">JPEG, PNG, WebP (最大5MB)</span>
-            </p>
-          </div>
-        )}
-        
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileInputChange}
-          className="hidden"
-          disabled={uploading || loading}
-        />
-        
-        {errors.imageUrl && (
-          <p className="mt-2 text-sm text-red-600">{errors.imageUrl}</p>
-        )}
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          食事タイプ <span className="text-red-500">*</span>
-        </label>
-        <MealTypeSelector
-          mealTypes={mealTypes}
-          value={formData.mealTypeId}
-          onChange={(value) => handleInputChange('mealTypeId', value)}
-          error={errors.mealTypeId}
-          placeholder="食事タイプを選択してください"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="mealName" className="block text-sm font-medium text-gray-700 mb-2">
-          食事名 <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          id="mealName"
-          value={formData.mealName}
-          onChange={(e) => handleInputChange('mealName', e.target.value)}
-          disabled={loading}
-          className={`
-            w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
-            ${errors.mealName ? 'border-red-500' : 'border-gray-300'}
-            ${loading ? 'bg-gray-100' : 'bg-white'}
-          `}
-          placeholder="例：チキンサラダ、パスタ"
-        />
-        {errors.mealName && (
-          <p className="mt-1 text-sm text-red-600">{errors.mealName}</p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="recordedAt" className="block text-sm font-medium text-gray-700 mb-2">
-          記録日時
-        </label>
-        <input
-          type="datetime-local"
-          id="recordedAt"
-          value={formData.recordedAt}
-          onChange={(e) => handleInputChange('recordedAt', e.target.value)}
-          disabled={loading}
-          className={`
-            w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
-            ${loading ? 'bg-gray-100' : 'bg-white'}
-          `}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div>
-          <label htmlFor="calories" className="block text-sm font-medium text-gray-700 mb-2">
-            カロリー (kcal)
-          </label>
-          <input
-            type="number"
-            id="calories"
-            value={formData.calories || ''}
-            onChange={(e) => handleInputChange('calories', handleNumberInput(e.target.value))}
-            disabled={loading}
-            className={`
-              w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
-              ${errors.calories ? 'border-red-500' : 'border-gray-300'}
-              ${loading ? 'bg-gray-100' : 'bg-white'}
-            `}
-            placeholder="0"
-            min="0"
-            step="0.1"
-          />
-          {errors.calories && (
-            <p className="mt-1 text-sm text-red-600">{errors.calories}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="protein" className="block text-sm font-medium text-gray-700 mb-2">
-            たんぱく質 (g)
-          </label>
-          <input
-            type="number"
-            id="protein"
-            value={formData.protein || ''}
-            onChange={(e) => handleInputChange('protein', handleNumberInput(e.target.value))}
-            disabled={loading}
-            className={`
-              w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
-              ${errors.protein ? 'border-red-500' : 'border-gray-300'}
-              ${loading ? 'bg-gray-100' : 'bg-white'}
-            `}
-            placeholder="0"
-            min="0"
-            step="0.1"
-          />
-          {errors.protein && (
-            <p className="mt-1 text-sm text-red-600">{errors.protein}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="fat" className="block text-sm font-medium text-gray-700 mb-2">
-            脂質 (g)
-          </label>
-          <input
-            type="number"
-            id="fat"
-            value={formData.fat || ''}
-            onChange={(e) => handleInputChange('fat', handleNumberInput(e.target.value))}
-            disabled={loading}
-            className={`
-              w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
-              ${errors.fat ? 'border-red-500' : 'border-gray-300'}
-              ${loading ? 'bg-gray-100' : 'bg-white'}
-            `}
-            placeholder="0"
-            min="0"
-            step="0.1"
-          />
-          {errors.fat && (
-            <p className="mt-1 text-sm text-red-600">{errors.fat}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="carbs" className="block text-sm font-medium text-gray-700 mb-2">
-            炭水化物 (g)
-          </label>
-          <input
-            type="number"
-            id="carbs"
-            value={formData.carbs || ''}
-            onChange={(e) => handleInputChange('carbs', handleNumberInput(e.target.value))}
-            disabled={loading}
-            className={`
-              w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
-              ${errors.carbs ? 'border-red-500' : 'border-gray-300'}
-              ${loading ? 'bg-gray-100' : 'bg-white'}
-            `}
-            placeholder="0"
-            min="0"
-            step="0.1"
-          />
-          {errors.carbs && (
-            <p className="mt-1 text-sm text-red-600">{errors.carbs}</p>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="memo" className="block text-sm font-medium text-gray-700 mb-2">
-          メモ
-        </label>
-        <textarea
-          id="memo"
-          value={formData.memo}
-          onChange={(e) => handleInputChange('memo', e.target.value)}
-          disabled={loading}
-          rows={4}
-          className={`
-            w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
-            ${loading ? 'bg-gray-100' : 'bg-white'}
-          `}
-          placeholder="食事に関するメモがあれば記入してください"
-        />
-      </div>
-
-      <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-          >
-            キャンセル
-          </button>
-        )}
-        <button
-          type="submit"
-          disabled={loading}
-          className={`
-            px-6 py-2 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500
-            ${loading 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-blue-600 hover:bg-blue-700'
-            }
-          `}
-        >
-          {isSubmitting ? (
-            <div className="flex items-center">
-              <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              保存中...
-            </div>
+              
+              <Group justify="center">
+                <Button
+                  variant="light"
+                  color="green"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || loading}
+                  leftSection={<IconPhoto size={16} />}
+                >
+                  写真を変更
+                </Button>
+              </Group>
+            </Stack>
           ) : (
-            submitLabel
+            <Card
+              withBorder
+              h={264}
+              style={{
+                cursor: 'pointer',
+                borderStyle: 'dashed',
+                borderColor: 'var(--mantine-color-green-4)',
+                backgroundColor: 'var(--mantine-color-green-0)',
+                transition: 'all 0.2s ease'
+              }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Center h="100%">
+                <Stack align="center" gap="lg">
+                  <IconUpload size={64} color="var(--mantine-color-green-6)" />
+                  <Stack align="center" gap={8}>
+                    <Text fw={600} size="lg" c="green.7" ta="center">
+                      写真をアップロード
+                    </Text>
+                    <Text size="sm" c="dimmed" ta="center">
+                      クリックまたはドラッグ&ドロップ
+                    </Text>
+                    <Text size="xs" c="dimmed" ta="center">
+                      JPEG, PNG, WebP (最大5MB)
+                    </Text>
+                  </Stack>
+                </Stack>
+              </Center>
+            </Card>
           )}
-        </button>
-      </div>
-    </form>
+          
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileInputChange}
+            style={{ display: 'none' }}
+            disabled={uploading || loading}
+          />
+          
+          {errors.imageUrl && (
+            <Text size="sm" c="red" mt="xs">{errors.imageUrl}</Text>
+          )}
+        </Card>
+
+        {/* Meal Type & Basic Info */}
+        <Card shadow="sm" padding="xl" radius="md" withBorder>
+          <Group justify="space-between" mb="lg">
+            <Group gap="sm">
+              <IconTarget size={20} color="var(--mantine-color-blue-6)" />
+              <Text fw={600} size="lg">基本情報</Text>
+            </Group>
+          </Group>
+          
+          <Stack gap="md">
+            <Box>
+              <Text size="sm" fw={500} mb="xs">
+                食事タイプ <Text component="span" c="red">*</Text>
+              </Text>
+              <MealTypeSelector
+                mealTypes={mealTypes}
+                value={formData.mealTypeId}
+                onChange={(value) => handleInputChange('mealTypeId', value)}
+                onCreateNew={() => setShowCreateModal(true)}
+                error={errors.mealTypeId}
+                placeholder="食事タイプを選択してください"
+              />
+            </Box>
+
+            <TextInput
+              label={
+                <>
+                  食事名 <Text component="span" c="red">*</Text>
+                </>
+              }
+              placeholder="例：チキンサラダ、パスタ"
+              value={formData.mealName}
+              onChange={(e) => handleInputChange('mealName', e.target.value)}
+              disabled={loading}
+              error={errors.mealName}
+            />
+
+            <TextInput
+              label="記録日時"
+              type="datetime-local"
+              value={formData.recordedAt}
+              onChange={(e) => handleInputChange('recordedAt', e.target.value)}
+              disabled={loading}
+              leftSection={<IconCalendar size={16} />}
+            />
+          </Stack>
+        </Card>
+
+        {/* Nutrition Information */}
+        <Card shadow="sm" padding="xl" radius="md" withBorder>
+          <Group justify="space-between" mb="lg">
+            <Group gap="sm">
+              <IconFlame size={20} color="var(--mantine-color-red-6)" />
+              <Text fw={600} size="lg">栄養情報</Text>
+            </Group>
+          </Group>
+          
+          <Grid>
+            <Grid.Col span={{ base: 6, md: 3 }}>
+              <NumberInput
+                label="カロリー (kcal)"
+                placeholder="0"
+                value={formData.calories || ''}
+                onChange={(value) => handleInputChange('calories', typeof value === 'number' ? value : null)}
+                disabled={loading}
+                error={errors.calories}
+                min={0}
+                step={0.1}
+                decimalScale={1}
+                leftSection={<IconFlame size={16} />}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={{ base: 6, md: 3 }}>
+              <NumberInput
+                label="たんぱく質 (g)"
+                placeholder="0"
+                value={formData.protein || ''}
+                onChange={(value) => handleInputChange('protein', typeof value === 'number' ? value : null)}
+                disabled={loading}
+                error={errors.protein}
+                min={0}
+                step={0.1}
+                decimalScale={1}
+                leftSection={<IconActivity size={16} />}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={{ base: 6, md: 3 }}>
+              <NumberInput
+                label="脂質 (g)"
+                placeholder="0"
+                value={formData.fat || ''}
+                onChange={(value) => handleInputChange('fat', typeof value === 'number' ? value : null)}
+                disabled={loading}
+                error={errors.fat}
+                min={0}
+                step={0.1}
+                decimalScale={1}
+                leftSection={<IconAward size={16} />}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={{ base: 6, md: 3 }}>
+              <NumberInput
+                label="炭水化物 (g)"
+                placeholder="0"
+                value={formData.carbs || ''}
+                onChange={(value) => handleInputChange('carbs', typeof value === 'number' ? value : null)}
+                disabled={loading}
+                error={errors.carbs}
+                min={0}
+                step={0.1}
+                decimalScale={1}
+                leftSection={<IconTarget size={16} />}
+              />
+            </Grid.Col>
+          </Grid>
+        </Card>
+
+        {/* Memo Section */}
+        <Card shadow="sm" padding="xl" radius="md" withBorder>
+          <Group justify="space-between" mb="lg">
+            <Group gap="sm">
+              <IconNotes size={20} color="var(--mantine-color-gray-6)" />
+              <Text fw={600} size="lg">メモ</Text>
+            </Group>
+          </Group>
+          
+          <Textarea
+            placeholder="食事に関するメモがあれば記入してください"
+            value={formData.memo}
+            onChange={(e) => handleInputChange('memo', e.target.value)}
+            disabled={loading}
+            autosize
+            minRows={4}
+          />
+        </Card>
+
+        {/* Action Buttons */}
+        <Card shadow="sm" padding="xl" radius="md" withBorder>
+          <Group justify="flex-end" gap="md">
+            {onCancel && (
+              <Button
+                variant="outline"
+                onClick={onCancel}
+                disabled={loading}
+                size="lg"
+              >
+                キャンセル
+              </Button>
+            )}
+            <Button
+              type="submit"
+              loading={loading}
+              disabled={loading}
+              size="lg"
+              variant="gradient"
+              gradient={{ from: 'green', to: 'blue' }}
+            >
+              {submitLabel}
+            </Button>
+          </Group>
+        </Card>
+        </Stack>
+      </form>
+
+      {/* Create Meal Type Modal */}
+      <CreateMealTypeModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={handleCreateMealType}
+      />
+    </Stack>
   );
 }
