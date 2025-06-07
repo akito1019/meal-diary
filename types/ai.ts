@@ -6,7 +6,28 @@ export interface MealAnalysisRequest {
 export interface MealAnalysisAlternative {
   name: string;
   calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
   confidence: number;
+}
+
+export interface PastMealSuggestion {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  memo?: string;
+  image_url?: string;
+  recorded_at: string;
+  similarity_score?: number;
+  similarity_reasoning?: string;
+  meal_types?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface MealAnalysisResult {
@@ -18,6 +39,7 @@ export interface MealAnalysisResult {
   fat: number;
   confidence: number;
   alternatives?: MealAnalysisAlternative[];
+  pastMealSuggestions?: PastMealSuggestion[];
   portionSize?: string;
   ingredients?: string[];
 }

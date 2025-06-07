@@ -386,7 +386,7 @@ export default function MealAnalysisResultComponent({
                               setSelectedPastMeal(suggestion.id);
                               setSelectedAlternative(null); // 他の選択をクリア
                               onSelect({
-                                name: suggestion.meal_name,
+                                name: suggestion.name,
                                 calories: suggestion.calories || 0,
                                 protein: suggestion.protein || 0,
                                 carbs: suggestion.carbs || 0,
@@ -399,14 +399,14 @@ export default function MealAnalysisResultComponent({
                               <Group justify="space-between" align="flex-start">
                                 <Box flex={1}>
                                   <Text fw={600} size="sm" lineClamp={2}>
-                                    {suggestion.meal_name}
+                                    {suggestion.name}
                                   </Text>
                                   <Group gap="xs" mt={4}>
                                     <Badge size="xs" color="violet" variant="light">
                                       {suggestion.meal_types?.name || '不明'}
                                     </Badge>
                                     <Badge size="xs" color="blue" variant="light">
-                                      類似度: {Math.round(suggestion.similarity_score * 100)}%
+                                      類似度: {Math.round((suggestion.similarity_score || 0) * 100)}%
                                     </Badge>
                                   </Group>
                                   <Text size="xs" c="dimmed" mt={2}>

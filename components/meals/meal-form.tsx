@@ -225,7 +225,7 @@ export function MealForm({
   const handleCreateMealType = async (name: string) => {
     try {
       console.log('Creating meal type:', name);
-      const newType = await createMealType({ name });
+      const newType = await createMealType(name);
       console.log('Created meal type:', newType);
       await refetch();
       setFormData(prev => ({ ...prev, mealTypeId: newType.id }));

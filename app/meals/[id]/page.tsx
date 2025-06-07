@@ -6,13 +6,13 @@ import AppLayout from '@/app/components/layout/AppLayout'
 import { MealForm } from '@/components/meals/meal-form'
 import { useMeals, UpdateMealData, Meal } from '@/hooks/use-meals'
 import { useToast } from '@/components/common/Toast'
-import { NutritionDisplay } from '@/components/nutrition/NutritionDisplay'
+import { NutritionDisplay } from '@/components/nutrition'
 
 export default function MealDetailPage() {
   const router = useRouter()
   const params = useParams()
   const { fetchMeal, updateMeal, deleteMeal, loading } = useMeals()
-  const { showToast } = useToast()
+  const { showSuccess, showError } = useToast()
   const [meal, setMeal] = useState<Meal | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -28,7 +28,7 @@ export default function MealDetailPage() {
       const mealData = await fetchMeal(params.id as string)
       setMeal(mealData)
     } catch (error) {
-      showToast('食事データの読み込みに失敗しました', 'error')
+      showError('食事データの読み込みに失敗しました')
       router.push('/')
     }
   }
@@ -40,9 +40,9 @@ export default function MealDetailPage() {
       const updatedMeal = await updateMeal(meal.id, data)
       setMeal(updatedMeal)
       setIsEditing(false)
-      showToast('食事を更新しました', 'success')
+      showSuccess('食事を更新しました')
     } catch (error) {
-      showToast('食事の更新に失敗しました', 'error')
+      showError('食事の更新に失敗しました')
     }
   }
 
@@ -51,10 +51,10 @@ export default function MealDetailPage() {
 
     try {
       await deleteMeal(meal.id)
-      showToast('食事を削除しました', 'success')
+      showSuccess('食事を削除しました')
       router.push('/')
     } catch (error) {
-      showToast('食事の削除に失敗しました', 'error')
+      showError('食事の削除に失敗しました')
     }
   }
 
@@ -178,10 +178,9 @@ export default function MealDetailPage() {
 
             {/* Nutrition Info */}
             <NutritionDisplay
-              calories={meal.calories}
-              protein={meal.protein}
-              fat={meal.fat}
-              carbs={meal.carbs}
+              protein={meal.protein || 0}
+              fat={meal.fat || 0}
+              carbs={meal.carbs || 0}
             />
 
             {/* Memo */}

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { openai } from '@/lib/openai/client';
 import { generateAnalysisPrompt, MEAL_ANALYSIS_USER_PROMPT } from '@/lib/ai/prompts';
 import { MealAnalysisRequest, MealAnalysisResult, MealAnalysisResponse, AIServiceError } from '@/types/ai';
@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     

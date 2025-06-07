@@ -35,7 +35,7 @@ export default function PortfolioView({
   mealTypes = []
 }: PortfolioViewProps) {
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
-  const observer = useRef<IntersectionObserver>()
+  const observer = useRef<IntersectionObserver | null>(null)
 
   const lastMealElementRef = useCallback((node: HTMLDivElement) => {
     if (loading) return

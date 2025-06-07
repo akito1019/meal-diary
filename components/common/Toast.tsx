@@ -48,10 +48,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => [...prev, newToast]);
 
     // 自動削除
-    if (newToast.duration > 0) {
+    const duration = newToast.duration ?? 5000;
+    if (duration > 0) {
       setTimeout(() => {
         removeToast(id);
-      }, newToast.duration);
+      }, duration);
     }
 
     return id;
