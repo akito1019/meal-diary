@@ -1,0 +1,79 @@
+# PRの変更内容に基づいて自動的にラベルを付与する設定
+
+# フロントエンド関連
+frontend:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'app/**/*.tsx'
+      - 'app/**/*.ts'
+      - 'components/**/*.tsx'
+      - 'components/**/*.ts'
+      - 'hooks/**/*.ts'
+
+# バックエンド/API関連
+backend:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'app/api/**/*.ts'
+      - 'lib/supabase/**/*.ts'
+      - 'lib/openai/**/*.ts'
+
+# UI/スタイリング関連
+ui:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*.css'
+      - 'app/globals.css'
+      - 'components/**/*.tsx'
+      - '**/layout.tsx'
+
+# AI機能関連
+ai:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'lib/ai/**/*'
+      - 'components/ai/**/*'
+      - 'hooks/useAI.ts'
+      - 'app/api/ai/**/*'
+
+# データベース関連
+database:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'supabase/migrations/**/*'
+      - 'types/database.ts'
+
+# ドキュメント
+documentation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*.md'
+      - 'docs/**/*'
+
+# 設定ファイル
+config:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'next.config.*'
+      - '.eslintrc.*'
+      - '.github/**/*'
+
+# テスト関連
+test:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*.test.ts'
+      - '**/*.test.tsx'
+      - '**/*.spec.ts'
+      - '**/*.spec.tsx'
+      - 'jest.config.*'
+
+# 依存関係
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'package.json'
+      - 'package-lock.json'
