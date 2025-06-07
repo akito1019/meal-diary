@@ -95,6 +95,7 @@ export default function OptimizedImage({
         )}
         <Image
           {...imageProps}
+          alt={alt || ''}
           fill
           style={{ objectFit: 'cover' }}
         />
@@ -112,6 +113,7 @@ export default function OptimizedImage({
       )}
       <Image
         {...imageProps}
+        alt={alt || ''}
         width={width || 500}
         height={height || 300}
       />

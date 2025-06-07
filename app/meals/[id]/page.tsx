@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import Image from 'next/image'
 import AppLayout from '@/app/components/layout/AppLayout'
 import { MealForm } from '@/components/meals/meal-form'
 import { useMeals, UpdateMealData, Meal } from '@/hooks/use-meals'
@@ -17,13 +18,7 @@ export default function MealDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  useEffect(() => {
-    if (params.id) {
-      loadMeal()
-    }
-  }, [params.id])
-
-  const loadMeal = async () => {
+  const loadMeal = useCallback(async () => {
     try {
       const mealData = await fetchMeal(params.id as string)
       setMeal(mealData)
@@ -31,7 +26,13 @@ export default function MealDetailPage() {
       showError('食事データの読み込みに失敗しました')
       router.push('/')
     }
-  }
+  }, [fetchMeal, params.id, showError, router])
+
+  useEffect(() => {
+    if (params.id) {
+      loadMeal()
+    }
+  }, [params.id, loadMeal])
 
   const handleUpdate = async (data: UpdateMealData) => {
     if (!meal) return
@@ -142,11 +143,12 @@ export default function MealDetailPage() {
         ) : (
           <div className="space-y-6">
             {/* Image */}
-            <div>
-              <img
+            <div className="relative h-64 w-full">
+              <Image
                 src={meal.image_url}
                 alt={meal.meal_name}
-                className="w-full h-64 object-cover rounded-lg border border-gray-300"
+                fill
+                className="object-cover rounded-lg border border-gray-300"
               />
             </div>
 
