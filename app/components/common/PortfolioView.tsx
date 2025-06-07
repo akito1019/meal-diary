@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface Meal {
   id: string
@@ -35,7 +36,7 @@ export default function PortfolioView({
   mealTypes = []
 }: PortfolioViewProps) {
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
-  const observer = useRef<IntersectionObserver>()
+  const observer = useRef<IntersectionObserver | null>(null)
 
   const lastMealElementRef = useCallback((node: HTMLDivElement) => {
     if (loading) return
@@ -111,10 +112,11 @@ export default function PortfolioView({
                   {/* Image */}
                   <div className="aspect-square relative overflow-hidden">
                     {meal.imageUrl && !imageErrors.has(meal.id) ? (
-                      <img
+                      <Image
                         src={meal.imageUrl}
                         alt={meal.mealName}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-200"
                         onError={() => handleImageError(meal.id)}
                       />
                     ) : (

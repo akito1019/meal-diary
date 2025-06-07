@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface Meal {
   id: string
@@ -97,9 +98,11 @@ export default function DailyMealList({ date, meals }: DailyMealListProps) {
               >
                 <div className="flex items-center space-x-4">
                   {meal.imageUrl ? (
-                    <img
+                    <Image
                       src={meal.imageUrl}
                       alt={meal.mealName}
+                      width={64}
+                      height={64}
                       className="w-16 h-16 rounded-lg object-cover"
                     />
                   ) : (

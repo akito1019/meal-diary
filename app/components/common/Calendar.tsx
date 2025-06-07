@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 
 interface CalendarProps {
   selectedDate: Date
@@ -75,9 +76,11 @@ export default function Calendar({ selectedDate, onDateSelect, meals = {} }: Cal
             {mealData && mealData.count > 0 && (
               <div className="flex items-center space-x-1 mt-1">
                 {mealData.thumbnail ? (
-                  <img
+                  <Image
                     src={mealData.thumbnail}
                     alt="meal"
+                    width={12}
+                    height={12}
                     className="w-3 h-3 rounded-full object-cover"
                   />
                 ) : (

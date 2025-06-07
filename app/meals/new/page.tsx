@@ -10,15 +10,15 @@ import { useToast } from '@/components/common/Toast'
 export default function NewMealPage() {
   const router = useRouter()
   const { createMeal, loading } = useMeals()
-  const { showToast } = useToast()
+  const { showSuccess, showError } = useToast()
 
   const handleSubmit = async (data: CreateMealData) => {
     try {
       await createMeal(data)
-      showToast('食事を記録しました', 'success')
+      showSuccess('食事を記録しました')
       router.push('/')
     } catch (error) {
-      showToast('食事の記録に失敗しました', 'error')
+      showError('食事の記録に失敗しました')
     }
   }
 
