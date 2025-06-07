@@ -92,14 +92,27 @@ export async function DELETE(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const { error: reorderError } = await supabase
+    // Reorder meal types after deletion
+    const { data: typesToReorder } = await supabase
       .from('meal_types')
-      .update({ display_order: supabase.sql`display_order - 1` })
+      .select('id, display_order')
       .eq('user_id', user.id)
-      .gt('display_order', mealType.display_order);
+      .gt('display_order', mealType.display_order)
+      .order('display_order');
 
-    if (reorderError) {
-      console.error('Error reordering meal types:', reorderError);
+    if (typesToReorder && typesToReorder.length > 0) {
+      const updates = typesToReorder.map((type, index) => ({
+        id: type.id,
+        display_order: mealType.display_order + index
+      }));
+
+      const { error: reorderError } = await supabase
+        .from('meal_types')
+        .upsert(updates, { onConflict: 'id' });
+
+      if (reorderError) {
+        console.error('Error reordering meal types:', reorderError);
+      }
     }
 
     return NextResponse.json({ message: 'Meal type deleted successfully' });

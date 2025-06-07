@@ -1,0 +1,152 @@
+name: Auto Create PR
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'release/**'
+      - 'hotfix/**'
+
+jobs:
+  create-pull-request:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Extract branch info
+        id: branch_info
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          
+          # ブランチタイプとチケット番号を抽出
+          if [[ $BRANCH_NAME =~ ^(feature|release|hotfix)/([A-Z]+-[0-9]+)?-?(.*)$ ]]; then
+            BRANCH_TYPE="${BASH_REMATCH[1]}"
+            TICKET_NUMBER="${BASH_REMATCH[2]}"
+            DESCRIPTION="${BASH_REMATCH[3]}"
+            
+            echo "branch_type=$BRANCH_TYPE" >> $GITHUB_OUTPUT
+            echo "ticket_number=$TICKET_NUMBER" >> $GITHUB_OUTPUT
+            echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get commit messages
+        id: commits
+        run: |
+          # develop ブランチとの差分からコミットメッセージを取得
+          BASE_BRANCH="develop"
+          if [[ "${{ steps.branch_info.outputs.branch_type }}" == "hotfix" ]]; then
+            BASE_BRANCH="main"
+          fi
+          
+          # ベースブランチが存在するか確認
+          if git show-ref --verify --quiet refs/remotes/origin/$BASE_BRANCH; then
+            COMMITS=$(git log --oneline --no-merges origin/$BASE_BRANCH..HEAD)
+            FIRST_COMMIT=$(git log --format=%B -n 1 origin/$BASE_BRANCH..HEAD | head -1)
+          else
+            # ベースブランチが存在しない場合は、現在のコミットのみ
+            COMMITS=$(git log --oneline -1)
+            FIRST_COMMIT=$(git log --format=%B -n 1 HEAD | head -1)
+          fi
+          
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "first_commit=$FIRST_COMMIT" >> $GITHUB_OUTPUT
+
+      - name: Check if PR exists
+        id: pr_check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_EXISTS=$(gh pr list --head "${{ steps.branch_info.outputs.branch_name }}" --json number --jq length)
+          echo "exists=$PR_EXISTS" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        if: steps.pr_check.outputs.exists == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # PRタイトルを生成
+          BRANCH_TYPE="${{ steps.branch_info.outputs.branch_type }}"
+          TICKET="${{ steps.branch_info.outputs.ticket_number }}"
+          FIRST_COMMIT="${{ steps.commits.outputs.first_commit }}"
+          
+          # ブランチタイプに応じたプレフィックス
+          case $BRANCH_TYPE in
+            feature) PREFIX="[feat]" ;;
+            release) PREFIX="[release]" ;;
+            hotfix) PREFIX="[hotfix]" ;;
+            *) PREFIX="[other]" ;;
+          esac
+          
+          # チケット番号がある場合は含める
+          if [ -n "$TICKET" ]; then
+            TITLE="$PREFIX $TICKET: $FIRST_COMMIT"
+          else
+            TITLE="$PREFIX $FIRST_COMMIT"
+          fi
+          
+          # ベースブランチを決定
+          if [ "$BRANCH_TYPE" == "hotfix" ]; then
+            BASE_BRANCH="main"
+          else
+            BASE_BRANCH="develop"
+          fi
+          
+          # PR本文を生成
+          BODY=$(cat <<EOF
+          ## 概要
+          $FIRST_COMMIT
+          
+          ## 変更内容
+          このPRには以下のコミットが含まれています：
+          
+          \`\`\`
+          ${{ steps.commits.outputs.commits }}
+          \`\`\`
+          
+          ## 関連チケット
+          ${{ steps.branch_info.outputs.ticket_number && format('- {0}', steps.branch_info.outputs.ticket_number) || 'なし' }}
+          
+          ## チェックリスト
+          - [ ] コードレビューの準備完了
+          - [ ] テストを追加/更新
+          - [ ] TypeScriptの型エラーなし
+          - [ ] ESLintエラーなし
+          - [ ] ビルドが成功
+          
+          ---
+          *This PR was automatically created by GitHub Actions*
+          EOF
+          )
+          
+          # PRを作成
+          gh pr create \
+            --title "$TITLE" \
+            --body "$BODY" \
+            --base "$BASE_BRANCH" \
+            --head "${{ steps.branch_info.outputs.branch_name }}" \
+            --draft
+
+      - name: Add labels to PR
+        if: steps.pr_check.outputs.exists == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # 作成されたPRの番号を取得
+          PR_NUMBER=$(gh pr list --head "${{ steps.branch_info.outputs.branch_name }}" --json number --jq '.[0].number')
+          
+          # ブランチタイプに応じたラベルを追加
+          case "${{ steps.branch_info.outputs.branch_type }}" in
+            feature) gh pr edit $PR_NUMBER --add-label "enhancement" ;;
+            hotfix) gh pr edit $PR_NUMBER --add-label "bug,urgent" ;;
+            release) gh pr edit $PR_NUMBER --add-label "release" ;;
+          esac

@@ -37,6 +37,10 @@ export function useToast() {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
+
   const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).substr(2, 9);
     const newToast: Toast = {
@@ -48,18 +52,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => [...prev, newToast]);
 
     // 自動削除
-    if (newToast.duration > 0) {
+    const duration = newToast.duration ?? 5000;
+    if (duration > 0) {
       setTimeout(() => {
         removeToast(id);
-      }, newToast.duration);
+      }, duration);
     }
 
     return id;
-  }, []);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
+  }, [removeToast]);
 
   const showSuccess = useCallback((title: string, message?: string) => {
     return addToast({ type: 'success', title, message });

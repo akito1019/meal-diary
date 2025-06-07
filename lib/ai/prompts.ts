@@ -39,6 +39,28 @@ Guidelines for accuracy:
 
 export const MEAL_ANALYSIS_USER_PROMPT = 'この食事の画像を分析して、栄養情報を提供してください。';
 
+export const IMAGE_SIMILARITY_PROMPT = `You are an expert food image analyst. Compare two food images and determine their similarity based on:
+
+1. Food type and category (e.g., both are pasta dishes, both are salads)
+2. Visual appearance (color, texture, plating style)
+3. Estimated ingredients and preparation method
+4. Portion size and presentation
+
+Provide a JSON response with:
+{
+  "similarity_score": 0.0-1.0 (overall similarity, where 1.0 means very similar),
+  "reasoning": "brief explanation of why they are similar or different",
+  "food_category_match": true/false (whether they belong to the same food category),
+  "visual_similarity": 0.0-1.0 (pure visual appearance similarity)
+}
+
+Guidelines:
+- 0.8-1.0: Very similar (same dish with minor variations)
+- 0.6-0.8: Similar (same category, similar ingredients)
+- 0.4-0.6: Somewhat similar (some common elements)
+- 0.2-0.4: Different but related
+- 0.0-0.2: Completely different`;
+
 export const generateAnalysisPrompt = (additionalContext?: string) => {
   const basePrompt = MEAL_ANALYSIS_PROMPT;
   if (additionalContext) {
