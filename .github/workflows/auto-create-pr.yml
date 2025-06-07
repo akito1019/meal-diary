@@ -40,19 +40,22 @@ jobs:
       - name: Get commit messages
         id: commits
         run: |
-          # develop ブランチとの差分からコミットメッセージを取得
-          BASE_BRANCH="develop"
-          if [[ "${{ steps.branch_info.outputs.branch_type }}" == "hotfix" ]]; then
-            BASE_BRANCH="main"
+          # main ブランチとの差分からコミットメッセージを取得
+          BASE_BRANCH="main"
+          
+          # ベースブランチが存在するか確認
+          if git show-ref --verify --quiet refs/remotes/origin/$BASE_BRANCH; then
+            COMMITS=$(git log --oneline --no-merges origin/$BASE_BRANCH..HEAD)
+            FIRST_COMMIT=$(git log --format=%B -n 1 origin/$BASE_BRANCH..HEAD | head -1)
+          else
+            # ベースブランチが存在しない場合は、現在のコミットのみ
+            COMMITS=$(git log --oneline -1)
+            FIRST_COMMIT=$(git log --format=%B -n 1 HEAD | head -1)
           fi
           
-          COMMITS=$(git log --oneline --no-merges origin/$BASE_BRANCH..HEAD)
           echo "commits<<EOF" >> $GITHUB_OUTPUT
           echo "$COMMITS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-          
-          # 最初のコミットメッセージから概要を抽出
-          FIRST_COMMIT=$(git log --format=%B -n 1 origin/$BASE_BRANCH..HEAD | head -1)
           echo "first_commit=$FIRST_COMMIT" >> $GITHUB_OUTPUT
 
       - name: Check if PR exists
@@ -89,11 +92,7 @@ jobs:
           fi
           
           # ベースブランチを決定
-          if [ "$BRANCH_TYPE" == "hotfix" ]; then
-            BASE_BRANCH="main"
-          else
-            BASE_BRANCH="develop"
-          fi
+          BASE_BRANCH="main"
           
           # PR本文を生成
           BODY=$(cat <<EOF
