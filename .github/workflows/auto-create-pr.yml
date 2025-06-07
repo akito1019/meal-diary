@@ -46,13 +46,19 @@ jobs:
             BASE_BRANCH="main"
           fi
           
-          COMMITS=$(git log --oneline --no-merges origin/$BASE_BRANCH..HEAD)
+          # ベースブランチが存在するか確認
+          if git show-ref --verify --quiet refs/remotes/origin/$BASE_BRANCH; then
+            COMMITS=$(git log --oneline --no-merges origin/$BASE_BRANCH..HEAD)
+            FIRST_COMMIT=$(git log --format=%B -n 1 origin/$BASE_BRANCH..HEAD | head -1)
+          else
+            # ベースブランチが存在しない場合は、現在のコミットのみ
+            COMMITS=$(git log --oneline -1)
+            FIRST_COMMIT=$(git log --format=%B -n 1 HEAD | head -1)
+          fi
+          
           echo "commits<<EOF" >> $GITHUB_OUTPUT
           echo "$COMMITS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-          
-          # 最初のコミットメッセージから概要を抽出
-          FIRST_COMMIT=$(git log --format=%B -n 1 origin/$BASE_BRANCH..HEAD | head -1)
           echo "first_commit=$FIRST_COMMIT" >> $GITHUB_OUTPUT
 
       - name: Check if PR exists
