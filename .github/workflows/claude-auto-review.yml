@@ -1,0 +1,133 @@
+name: Claude Auto Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+
+jobs:
+  auto-review:
+    # PRがドラフトでない場合のみ実行
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 全履歴を取得してより詳細な差分分析を可能に
+      
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v40
+        with:
+          files_yaml: |
+            src:
+              - '**/*.ts'
+              - '**/*.tsx'
+              - '**/*.js'
+              - '**/*.jsx'
+            docs:
+              - '**/*.md'
+              - 'docs/**'
+            config:
+              - 'package.json'
+              - 'tsconfig.json'
+              - '.eslintrc.*'
+              - 'next.config.*'
+
+      - name: Automatic PR Review
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          timeout_minutes: "30"
+          direct_prompt: |
+            You are reviewing a pull request for the Meal Diary project - a Japanese food tracking web application built with Next.js 14, Mantine UI, and Supabase.
+
+            ## Review Guidelines:
+
+            ### 1. Code Quality
+            - TypeScript type safety and proper typing
+            - React best practices and hooks usage
+            - Next.js App Router patterns
+            - Mantine UI component usage and theming consistency
+            - Code organization and maintainability
+
+            ### 2. Architecture & Patterns
+            - Adherence to the project structure (app/, components/, hooks/, lib/, types/, utils/)
+            - Proper separation of concerns
+            - Consistent error handling patterns
+            - Performance optimizations (lazy loading, memoization)
+
+            ### 3. Security
+            - No hardcoded secrets or API keys
+            - Proper authentication checks
+            - SQL injection prevention (Supabase RLS)
+            - XSS protection
+            - Secure file upload handling
+
+            ### 4. Performance
+            - Image optimization with Next.js Image component
+            - Proper use of React.memo and useCallback
+            - Efficient data fetching patterns
+            - Bundle size considerations
+
+            ### 5. Testing & Documentation
+            - Test coverage for new features
+            - Updated documentation for API changes
+            - Clear component prop interfaces
+            - Meaningful commit messages following Conventional Commits
+
+            ### 6. Project-Specific Checks
+            - Mantine v8 components (not v7 syntax)
+            - @tabler/icons-react usage (IconFlame not IconFire)
+            - Supabase client usage patterns
+            - OpenAI API integration best practices
+
+            ## Changed Files Analysis:
+            Source files changed: ${{ steps.changed-files.outputs.src_any_changed }}
+            Documentation changed: ${{ steps.changed-files.outputs.docs_any_changed }}
+            Config files changed: ${{ steps.changed-files.outputs.config_any_changed }}
+
+            Please provide:
+            1. A summary of the changes
+            2. Potential issues or concerns (if any)
+            3. Specific improvement suggestions
+            4. Positive aspects worth highlighting
+            
+            Use inline PR comments for specific code issues.
+            Be constructive and educational in your feedback.
+            
+            If this is a documentation-only change, focus on clarity, completeness, and accuracy.
+            For config changes, verify compatibility and security implications.
+
+      - name: Add PR Labels
+        if: github.event_name == 'pull_request'
+        uses: actions/labeler@v4
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          configuration-path: .github/labeler.yml
+
+      - name: Check PR Size
+        if: github.event_name == 'pull_request'
+        uses: CodelyTV/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: 'size/XS'
+          xs_max_size: 10
+          s_label: 'size/S'
+          s_max_size: 100
+          m_label: 'size/M'
+          m_max_size: 500
+          l_label: 'size/L'
+          l_max_size: 1000
+          xl_label: 'size/XL'
+          fail_if_xl: false
