@@ -40,8 +40,11 @@ jobs:
       - name: Get commit messages
         id: commits
         run: |
-          # main ブランチとの差分からコミットメッセージを取得
-          BASE_BRANCH="main"
+          # develop ブランチとの差分からコミットメッセージを取得
+          BASE_BRANCH="develop"
+          if [[ "${{ steps.branch_info.outputs.branch_type }}" == "hotfix" ]]; then
+            BASE_BRANCH="main"
+          fi
           
           # ベースブランチが存在するか確認
           if git show-ref --verify --quiet refs/remotes/origin/$BASE_BRANCH; then
@@ -92,7 +95,11 @@ jobs:
           fi
           
           # ベースブランチを決定
-          BASE_BRANCH="main"
+          if [ "$BRANCH_TYPE" == "hotfix" ]; then
+            BASE_BRANCH="main"
+          else
+            BASE_BRANCH="develop"
+          fi
           
           # PR本文を生成
           BODY=$(cat <<EOF
