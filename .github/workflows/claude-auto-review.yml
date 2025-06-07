@@ -1,12 +1,12 @@
-name: Claude Auto Review
+# Claude Auto Review - 一時的に無効化
+# Claude Code GitHub Appのインストールが必要です
+# インストール: https://github.com/apps/claude
+
+name: Claude Auto Review (Disabled)
 
 on:
-  pull_request:
-    types: [opened, synchronize, ready_for_review]
-  pull_request_review_comment:
-    types: [created]
-  issue_comment:
-    types: [created]
+  # 一時的にトリガーを無効化
+  workflow_dispatch:
 
 jobs:
   auto-review:

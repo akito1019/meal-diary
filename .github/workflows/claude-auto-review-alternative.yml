@@ -1,0 +1,122 @@
+# Claude Auto Review - Alternative Solution
+# Claude Code GitHub Appを使わない代替案
+
+name: Basic PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+jobs:
+  basic-review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v40
+        with:
+          files_yaml: |
+            src:
+              - '**/*.ts'
+              - '**/*.tsx'
+              - '**/*.js'
+              - '**/*.jsx'
+            docs:
+              - '**/*.md'
+            config:
+              - 'package.json'
+              - 'tsconfig.json'
+              - '.eslintrc.*'
+              - 'next.config.*'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript check
+        if: steps.changed-files.outputs.src_any_changed == 'true'
+        run: npx tsc --noEmit
+
+      - name: Run ESLint
+        if: steps.changed-files.outputs.src_any_changed == 'true'
+        run: npx eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 0
+
+      - name: Add PR Labels
+        uses: actions/labeler@v4
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          configuration-path: .github/labeler.yml
+
+      - name: Check PR Size
+        uses: CodelyTV/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: 'size/XS'
+          xs_max_size: 10
+          s_label: 'size/S'
+          s_max_size: 100
+          m_label: 'size/M'
+          m_max_size: 500
+          l_label: 'size/L'
+          l_max_size: 1000
+          xl_label: 'size/XL'
+          fail_if_xl: false
+
+      - name: PR Comment
+        if: steps.changed-files.outputs.src_any_changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            const changedFiles = `${{ steps.changed-files.outputs.all_changed_files }}`.split(' ');
+            
+            const comment = `## 🤖 Automated PR Review
+
+            ### Changes Summary
+            - **Files changed**: ${changedFiles.length}
+            - **Source files**: ${{ steps.changed-files.outputs.src_any_changed }}
+            - **Documentation**: ${{ steps.changed-files.outputs.docs_any_changed }}
+            - **Configuration**: ${{ steps.changed-files.outputs.config_any_changed }}
+
+            ### Checks Performed
+            - ✅ TypeScript type checking
+            - ✅ ESLint code quality
+            - ✅ Automatic labeling
+            - ✅ PR size classification
+
+            ### Next Steps
+            - Review the changes manually
+            - Ensure tests pass (if applicable)
+            - Check for breaking changes
+            - Verify documentation updates
+
+            ---
+            *This is an automated review. For detailed AI-powered code review, install [Claude Code GitHub App](https://github.com/apps/claude)*
+            `;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
